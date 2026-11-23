@@ -1,69 +1,47 @@
-import Image from "next/image";
-import styles from "./page.module.css";
-
+"use client";
+import { useEffect, useState } from "react";
+interface Task { id: number; title: string; category: string; status: string; }
 export default function Home() {
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [title, setTitle] = useState("");
+  const [category, setCategory] = useState("Kuliah");
+  const [status, setStatus] = useState("Pending");
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [msg, setMsg] = useState("");
+
+  const load = async () => { const r = await fetch("/api/tasks"); if (r.ok) setTasks(await r.json()); };
+  useEffect(() => { load(); }, []);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const r = await fetch(editingId ? `/api/tasks/${editingId}` : "/api/tasks", { method: editingId ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, category, status }), }); if (r.ok) { setMsg(editingId ? "Updated!" : "Created!"); setTitle(""); setEditingId(null); load(); } else setMsg("Gagal (Read-only di Vercel)"); };  const del = async (id: number) => { const r = await fetch(`/api/tasks/${id}`, { method: "DELETE" });
+    if (r.ok) { setMsg("Deleted!"); load(); } else setMsg("Gagal hapus");
+  };
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>
-            To get started, edit the{" "}
-            <code className={styles.code}>page.tsx</code> file.
-          </h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+    <main style={{ maxWidth: 700, margin: "40px auto", fontFamily: "sans-serif", padding: 20 }}>
+      <h1>Task Manager CRUD</h1>
+      {msg && <p style={{ background: "#eef", padding: 10 }}>{msg}</p>}
+      <form onSubmit={submit} style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+        <input placeholder="Judul tugas" value={title} onChange={(e) => setTitle(e.target.value)} required style={{ flex: 1, padding: 8 }} />
+        <select value={category} onChange={(e) => setCategory(e.target.value)}><option>Kuliah</option><option>Project</option><option>Pribadi</option></select>
+        <select value={status} onChange={(e) => setStatus(e.target.value)}><option>Pending</option><option>In Progress</option><option>Selesai</option></select>
+        <button type="submit">{editingId ? "Update" : "Tambah"}</button>
+      </form>
+      <table border={1} cellPadding={8} style={{ width: "100%", borderCollapse: "collapse" }}>
+        <thead><tr><th>ID</th><th>Tugas</th><th>Kategori</th><th>Status</th><th>Aksi</th></tr></thead>
+        <tbody>
+          {tasks.map((t) => (
+            <tr key={t.id}>
+              <td>{t.id}</td><td>{t.title}</td><td>{t.category}</td><td>{t.status}</td>
+              <td>
+                <button onClick={() => { setEditingId(t.id); setTitle(t.title); setCategory(t.category); setStatus(t.status); }}>Edit</button>{" "}
+                <button onClick={() => del(t.id)}>Hapus</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </main>
   );
 }
